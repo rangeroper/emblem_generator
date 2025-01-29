@@ -1,8 +1,8 @@
 # arc_pfp_generator
 
-![arc-pfp (4)](https://github.com/user-attachments/assets/287b1591-b557-49f0-9257-882a4e69a7ee)
-
-upload profile picture and add arc-branded overlays, or apply filters and tints. it generates a png image.
+<p align="center">
+   ![arc-pfp (4)](https://github.com/user-attachments/assets/287b1591-b557-49f0-9257-882a4e69a7ee)
+</p>
 
 ## features:
 - **upload your image**: ability to upload an image from your device
