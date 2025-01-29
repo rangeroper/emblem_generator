@@ -20,3 +20,18 @@ the arc_pfp_generator is a social application that allows users to upload and cu
 3. Run the development server
    ```
    npm run dev
+
+## 🚀 Roadmap  
+
+### 🔹 Phase 1: Enhancements & UX Improvements  
+- [ ] **Overlay Positioning & Sizing** – Allow users to adjust overlay placement and scale.  
+- [ ] **More Filters** – Add more advanced filter options like `saturate`, `blur`, `hue-rotate`, etc.  
+- [ ] **Drag & Drop Upload** – Improve UI/UX by allowing drag-and-drop functionality, while keeping click-to-upload available.  
+- [ ] **Default Images** – Let users pick from preset backgrounds (e.g., solid black, gradients).  
+
+### 🔹 Phase 2: Randomization & Generation  
+- [ ] **Generate Button** – Create a button that randomly chooses from set of preset backgrounds and apply a randomly selected overlay and/or filter
+
+### 🔹 Phase 3: Experimental Features & Research  
+- [ ] **AI-Generated Art** – Research and integrate tools/plugins for procedural or AI-generated images.  
+- [ ] **Smart Overlay Matching** – Experiment with ways to match filters & overlays based on AI generated image colors.  
