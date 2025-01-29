@@ -1,9 +1,5 @@
 # arc_pfp_generator
 
-<p align="center">
-   ![arc-pfp (4)](https://github.com/user-attachments/assets/287b1591-b557-49f0-9257-882a4e69a7ee)
-</p>
-
 ## features:
 - **upload your image**: ability to upload an image from your device
 - **apply filters**: adjust brightness or contrast to your uploaded image.
