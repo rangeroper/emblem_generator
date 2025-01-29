@@ -23,7 +23,11 @@ the arc_pfp_generator is a social application that allows users to upload and cu
 
 ## 🚀 Roadmap  
 
-### 🔹 Phase 1: Enhancements & UX Improvements  
+### 🔹 Phase 1: Enhancements & UX Improvements
+- [x] **Upload Image** – Users can upload their own image to apply effects.  
+- [x] **Apply Overlays** – Select from multiple overlay options to customize the image.  
+- [x] **Basic Filters** – Adjust `brightness` and `contrast` sliders to modify the image.  
+- [x] **Download Final Image** – Users can download their customized profile picture in a png format. 
 - [ ] **Overlay Positioning & Sizing** – Allow users to adjust overlay placement and scale.  
 - [ ] **More Filters** – Add more advanced filter options like `saturate`, `blur`, `hue-rotate`, etc.  
 - [ ] **Drag & Drop Upload** – Improve UI/UX by allowing drag-and-drop functionality, while keeping click-to-upload available.  
