@@ -2,9 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import './PFPGenerator.css';
 
-const PFPGenerator = ({ overlayImage, filters, onImageUpload, onRemoveImage }) => {
-  const [baseImage, setBaseImage] = useState(null); 
-  const [finalImage, setFinalImage] = useState(null); 
+import mintGreenArc from '../assets/overlays/mint_green_logo.png'; // Update path if necessary
+import texture from '../assets/overlays/texture.jpg'; // Add texture image path
+
+const PFPGenerator = ({ onImageUpload, onRemoveImage }) => {
+  const [baseImage, setBaseImage] = useState(null);
+  const [finalImage, setFinalImage] = useState(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -15,89 +18,136 @@ const PFPGenerator = ({ overlayImage, filters, onImageUpload, onRemoveImage }) =
       reader.onload = (e) => {
         setBaseImage(e.target.result);
         onImageUpload();
-        generatePFP(e.target.result, overlayImage, filters); 
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveImage = () => {
-    setBaseImage(null); 
-    setFinalImage(null); 
-    fileInputRef.current.value = ''; 
-    onRemoveImage(); 
+    setBaseImage(null);
+    setFinalImage(null);
+    fileInputRef.current.value = '';
+    onRemoveImage();
   };
 
-  const generatePFP = (imageSrc, overlaySrc, appliedFilters) => {
+  const generatePFP = () => {
+    if (!baseImage) return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const img = new Image();
 
     img.onload = () => {
-      canvas.width = 400;
-      canvas.height = 400;
+      // Set the canvas size to 1000x1000
+      canvas.width = 800;
+      canvas.height = 1080;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(200, 200, 200, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.clip();
+      // Convert image to grayscale and increase contrast
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      enhanceContrastAndConvertToBW(ctx, canvas.width, canvas.height);
 
-      const { brightness = 100, contrast = 100, tint = 'transparent' } = appliedFilters;
-      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+      // Apply halftone (microdots) effect
+      createHalftoneEffect(ctx, canvas.width, canvas.height);
 
-      const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
-      const x = (canvas.width / 2) - (img.width / 2) * scale;
-      const y = (canvas.height / 2) - (img.height / 2) * scale;
-      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+      // Apply the mint green arc overlay
+      const overlayImg = new Image();
+      overlayImg.onload = () => {
+        const overlaySize = canvas.width * 0.6;
+        const aspectRatio = overlayImg.width / overlayImg.height;
+        const overlayWidth = overlaySize;
+        const overlayHeight = overlaySize / aspectRatio;
 
-      if (tint && tint !== 'transparent') {
-        ctx.fillStyle = tint;
-        ctx.globalAlpha = 0.3; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0; 
-      }
+        ctx.drawImage(
+          overlayImg,
+          (canvas.width - overlayWidth) / 2,
+          (canvas.height - overlayHeight) / 2,
+          overlayWidth,
+          overlayHeight
+        );
 
-      ctx.restore();
-
-      if (overlaySrc) {
-        const overlayImg = new Image();
-        overlayImg.onload = () => {
-          const overlaySize = canvas.width * 0.6;
-          const aspectRatio = overlayImg.width / overlayImg.height;
-          const overlayWidth = overlaySize;
-          const overlayHeight = overlaySize / aspectRatio;
-
-          ctx.drawImage(
-            overlayImg,
-            (canvas.width - overlayWidth) / 2,
-            (canvas.height - overlayHeight) / 2,
-            overlayWidth,
-            overlayHeight
-          );
-          setFinalImage(canvas.toDataURL('image/png')); 
-        };
-        overlayImg.src = overlaySrc;
-      } else {
-        setFinalImage(canvas.toDataURL('image/png')); 
-      }
+        setFinalImage(canvas.toDataURL('image/png'));
+      };
+      overlayImg.src = mintGreenArc;
     };
 
-    img.src = imageSrc;
+    img.src = baseImage;
+  };
+
+  const enhanceContrastAndConvertToBW = (ctx, width, height) => {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+  
+    // Apply contrast adjustment to 115% (reduced from 130%)
+    const factor = 1.15; // Reduced contrast factor
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+  
+      // Apply contrast
+      data[i] = Math.min(255, factor * (r - 128) + 128);
+      data[i + 1] = Math.min(255, factor * (g - 128) + 128);
+      data[i + 2] = Math.min(255, factor * (b - 128) + 128);
+    }
+  
+    // Convert to grayscale by averaging RGB values
+    for (let i = 0; i < data.length; i += 4) {
+      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      data[i] = avg;   // Red channel
+      data[i + 1] = avg; // Green channel
+      data[i + 2] = avg; // Blue channel
+    }
+  
+    // Apply the updated image data
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+
+  const createHalftoneEffect = (ctx, width, height) => {
+    const dotSpacing = 6;  // Adjusted to reduce spacing between dots
+    const maxDotSize = 5; // Maximum size of the halftone dot
+  
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+  
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, width, height);
+  
+    // Apply halftone dots in a triangular (hexagonal) pattern
+    for (let y = 0; y < height; y += dotSpacing) {
+      for (let x = 0; x < width; x += dotSpacing) {
+        const i = (y * width + x) * 4;
+        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+  
+        // Adjust dot size based on brightness
+        const dotSize = Math.max(0, (1 - brightness / 255) * maxDotSize);
+  
+        // Shift every other row to create a triangular (hexagonal) pattern
+        const offsetX = (y % (2 * dotSpacing) === 0) ? 0 : dotSpacing / 2;
+  
+        // Draw the dot
+        ctx.beginPath();
+        ctx.arc(x + offsetX, y, dotSize, 0, Math.PI * 2, false);
+        ctx.fillStyle = 'black'; // Black ink for the halftone effect
+        ctx.fill();
+      }
+    }
   };
 
   useEffect(() => {
     if (baseImage) {
-      generatePFP(baseImage, overlayImage, filters);
+      generatePFP();
     }
-  }, [overlayImage, filters, baseImage]);
+  }, [baseImage]);
 
   const downloadImage = () => {
     if (finalImage) {
       const link = document.createElement('a');
       link.download = 'arc-pfp.png';
       link.href = finalImage;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -117,7 +167,6 @@ const PFPGenerator = ({ overlayImage, filters, onImageUpload, onRemoveImage }) =
         </label>
       </div>
 
-      {/* Show the remove button only if an image is uploaded */}
       {baseImage && (
         <button onClick={handleRemoveImage} className="remove-button">
           remove image
@@ -126,11 +175,11 @@ const PFPGenerator = ({ overlayImage, filters, onImageUpload, onRemoveImage }) =
 
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      {baseImage && (  
+      {baseImage && (
         <div className="preview-parent">
           <div className="preview-container">
             <img
-              src={finalImage || baseImage}  
+              src={finalImage || baseImage}
               alt="Generated profile picture"
               className="preview-image"
             />
