@@ -154,21 +154,22 @@ const PFPGenerator = () => {
 
       const textureImg = new Image();
       textureImg.onload = () => {
-        ctx.globalAlpha = 0.2; 
+        ctx.globalAlpha = 0.11; 
         ctx.drawImage(textureImg, 0, 0, canvas.width * 2, canvas.height * 2);
         ctx.globalAlpha = 1.0; // Reset globalalpha to default
 
         const overlayImg = new Image();
         overlayImg.onload = () => {
-          const overlaySize = canvas.width * 0.9;
+          const overlaySize = canvas.width * 0.8;
           const aspectRatio = overlayImg.width / overlayImg.height;
           const overlayWidth = overlaySize;
           const overlayHeight = overlaySize / aspectRatio;
+          const yOffset = canvas.height * 0.1;
 
           ctx.drawImage(
             overlayImg,
             (canvas.width - overlayWidth) / 2,
-            (canvas.height - overlayHeight) / 2,
+            (canvas.height - overlayHeight) / 2 + yOffset,
             overlayWidth,
             overlayHeight
           );
