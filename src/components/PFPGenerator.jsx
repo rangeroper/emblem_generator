@@ -250,7 +250,7 @@ const PFPGenerator = () => {
             className="preview-image"
           />
           <button onClick={downloadImage} className="download-button">
-            Download Arc PFP
+            /download_emblem
           </button>
         </div>
       )}
