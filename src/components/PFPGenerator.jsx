@@ -1,144 +1,44 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Upload } from 'lucide-react';
+import EasyCrop from 'react-easy-crop';
 import './PFPGenerator.css';
 
-import mintGreenArc from '../assets/overlays/mint_green_logo.png'; // Update path if necessary
-import texture from '../assets/overlays/texture.jpg'; // Add texture image path
+import mintGreenArc from '../assets/overlays/mint_green_logo.png'; 
+import texture from '../assets/overlays/texture.jpg'; 
 
-const PFPGenerator = ({ onImageUpload, onRemoveImage }) => {
+const PFPGenerator = () => {
   const [baseImage, setBaseImage] = useState(null);
   const [finalImage, setFinalImage] = useState(null);
+  const [generated, setGenerated] = useState(false);  // track if the final image is generated
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const fileUpload = useRef(null);
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const processedImageRef = useRef(false);  // To prevent regenerating
 
-  const handleImageUpload = (event) => {
+  /**************************************** 
+  image functions: upload, remove, download
+  *****************************************/
+  const uploadImage = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         setBaseImage(e.target.result);
-        onImageUpload();
+        setGenerated(false);  // Reset generated state when a new image is uploaded
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemoveImage = () => {
+  const removeUploadedImage = () => {
     setBaseImage(null);
     setFinalImage(null);
-    fileInputRef.current.value = '';
-    onRemoveImage();
+    setGenerated(false);  // Reset generated state when the image is removed
+    fileUpload.current.value = '';
+    processedImageRef.current = false;
   };
-
-  const generatePFP = () => {
-    if (!baseImage) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-
-    img.onload = () => {
-      // Set the canvas size to 1000x1000
-      canvas.width = 800;
-      canvas.height = 1080;
-
-      // Convert image to grayscale and increase contrast
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      enhanceContrastAndConvertToBW(ctx, canvas.width, canvas.height);
-
-      // Apply halftone (microdots) effect
-      createHalftoneEffect(ctx, canvas.width, canvas.height);
-
-      // Apply the mint green arc overlay
-      const overlayImg = new Image();
-      overlayImg.onload = () => {
-        const overlaySize = canvas.width * 0.6;
-        const aspectRatio = overlayImg.width / overlayImg.height;
-        const overlayWidth = overlaySize;
-        const overlayHeight = overlaySize / aspectRatio;
-
-        ctx.drawImage(
-          overlayImg,
-          (canvas.width - overlayWidth) / 2,
-          (canvas.height - overlayHeight) / 2,
-          overlayWidth,
-          overlayHeight
-        );
-
-        setFinalImage(canvas.toDataURL('image/png'));
-      };
-      overlayImg.src = mintGreenArc;
-    };
-
-    img.src = baseImage;
-  };
-
-  const enhanceContrastAndConvertToBW = (ctx, width, height) => {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-  
-    // Apply contrast adjustment to 115% (reduced from 130%)
-    const factor = 1.15; // Reduced contrast factor
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-  
-      // Apply contrast
-      data[i] = Math.min(255, factor * (r - 128) + 128);
-      data[i + 1] = Math.min(255, factor * (g - 128) + 128);
-      data[i + 2] = Math.min(255, factor * (b - 128) + 128);
-    }
-  
-    // Convert to grayscale by averaging RGB values
-    for (let i = 0; i < data.length; i += 4) {
-      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      data[i] = avg;   // Red channel
-      data[i + 1] = avg; // Green channel
-      data[i + 2] = avg; // Blue channel
-    }
-  
-    // Apply the updated image data
-    ctx.putImageData(imageData, 0, 0);
-  };
-
-
-  const createHalftoneEffect = (ctx, width, height) => {
-    const dotSpacing = 6;  // Adjusted to reduce spacing between dots
-    const maxDotSize = 5; // Maximum size of the halftone dot
-  
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-  
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, width, height);
-  
-    // Apply halftone dots in a triangular (hexagonal) pattern
-    for (let y = 0; y < height; y += dotSpacing) {
-      for (let x = 0; x < width; x += dotSpacing) {
-        const i = (y * width + x) * 4;
-        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-  
-        // Adjust dot size based on brightness
-        const dotSize = Math.max(0, (1 - brightness / 255) * maxDotSize);
-  
-        // Shift every other row to create a triangular (hexagonal) pattern
-        const offsetX = (y % (2 * dotSpacing) === 0) ? 0 : dotSpacing / 2;
-  
-        // Draw the dot
-        ctx.beginPath();
-        ctx.arc(x + offsetX, y, dotSize, 0, Math.PI * 2, false);
-        ctx.fillStyle = 'black'; // Black ink for the halftone effect
-        ctx.fill();
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (baseImage) {
-      generatePFP();
-    }
-  }, [baseImage]);
 
   const downloadImage = () => {
     if (finalImage) {
@@ -151,6 +51,142 @@ const PFPGenerator = ({ onImageUpload, onRemoveImage }) => {
     }
   };
 
+  const cropImage = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  /**************************************** 
+  image filters: BW, Halftone
+  *****************************************/
+  const enhanceContrastAndConvertToBW = (ctx, width, height) => {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+  
+    const brightnessBoost = 40; 
+    const contrastFactor = 1.2; 
+  
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i] + brightnessBoost;
+      let g = data[i + 1] + brightnessBoost;
+      let b = data[i + 2] + brightnessBoost;
+  
+      r = contrastFactor * (r - 128) + 128;
+      g = contrastFactor * (g - 128) + 128;
+      b = contrastFactor * (b - 128) + 128;
+  
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+  
+      const gray = Math.min(255, (r * 0.3 + g * 0.59 + b * 0.11) + 10);
+  
+      data[i] = gray;
+      data[i + 1] = gray;
+      data[i + 2] = gray;
+    }
+  
+    ctx.putImageData(imageData, 0, 0);
+  };  
+
+  const createHalftoneEffect = (ctx, width, height) => {
+    const dotSpacing = 4;  
+    const maxDotSize = 3; 
+  
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+  
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, width, height);
+  
+    for (let y = 0; y < height; y += dotSpacing) {
+      for (let x = 0; x < width; x += dotSpacing) {
+        const i = (y * width + x) * 4;
+        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+  
+        const dotSize = (1 - brightness / 255) * maxDotSize * 0.8;
+  
+        const noise = (Math.random() - 0.5) * 2;
+  
+        ctx.beginPath();
+        ctx.arc(x + noise, y + noise, dotSize, 0, Math.PI * 2, false);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+      }
+    }
+  };  
+
+  /**************************************** 
+  Generate PFP Image
+  *****************************************/
+  const generatePFP = () => {
+    if (!baseImage || processedImageRef.current) return; // Prevent reprocessing if already done
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+  
+    img.onload = () => {
+      canvas.width = 800; 
+      canvas.height = 800; 
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+      const zoomedWidth = croppedAreaPixels.width * zoom;
+      const zoomedHeight = croppedAreaPixels.height * zoom;
+
+      ctx.drawImage(
+        img, 
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0, 
+        0, 
+        canvas.width, 
+        canvas.height 
+      );
+
+      enhanceContrastAndConvertToBW(ctx, canvas.width, canvas.height);
+      createHalftoneEffect(ctx, canvas.width, canvas.height);
+  
+      const overlayImg = new Image();
+      overlayImg.onload = () => {
+        const overlaySize = canvas.width * 0.6;
+        const aspectRatio = overlayImg.width / overlayImg.height;
+        const overlayWidth = overlaySize;
+        const overlayHeight = overlaySize / aspectRatio;
+  
+        ctx.drawImage(
+          overlayImg,
+          (canvas.width - overlayWidth) / 2,
+          (canvas.height - overlayHeight) / 2,
+          overlayWidth,
+          overlayHeight
+        );
+  
+        const textureImg = new Image();
+        textureImg.onload = () => {
+          ctx.globalAlpha = 0.1; 
+          ctx.drawImage(textureImg, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = 1.0; 
+  
+          setFinalImage(canvas.toDataURL('image/png'));
+        };
+        textureImg.src = texture;
+      };
+      overlayImg.src = mintGreenArc;
+
+      processedImageRef.current = true;
+    };
+  
+    img.src = baseImage;
+
+    setGenerated(true);
+  };
+
+  /*********
+  JSX Below
+  **********/
   return (
     <div className="pfp-container">
       <div className="upload-area">
@@ -158,37 +194,71 @@ const PFPGenerator = ({ onImageUpload, onRemoveImage }) => {
           <Upload className="upload-icon" size={48} />
           <div className="upload-text">upload your image</div>
           <input
-            ref={fileInputRef}
+            ref={fileUpload}
             type="file"
             style={{ display: 'none' }}
             accept="image/*"
-            onChange={handleImageUpload}
+            onChange={uploadImage}
           />
         </label>
       </div>
 
       {baseImage && (
-        <button onClick={handleRemoveImage} className="remove-button">
+        <button onClick={removeUploadedImage} className="remove-button">
           remove image
         </button>
       )}
 
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      {baseImage && (
+      {baseImage && !generated && (
         <div className="preview-parent">
-          <div className="preview-container">
-            <img
-              src={finalImage || baseImage}
-              alt="Generated profile picture"
-              className="preview-image"
+          <div className="crop-container">
+            <EasyCrop
+              image={baseImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}  
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={cropImage}
             />
           </div>
+        </div>
+      )}
 
+      {generated && (
+        <div className="final-image-container">
+          <img
+            src={finalImage || baseImage}
+            alt="Generated profile picture"
+            className="preview-image"
+          />
           <button onClick={downloadImage} className="download-button">
-            download arc pfp
+            Download Arc PFP
           </button>
         </div>
+      )}
+
+      {baseImage && !generated && (
+        <div className="zoom-slider-container">
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className="zoom-slider"
+          />
+          <div className="zoom-text">zoom: {zoom.toFixed(2)}</div>
+        </div>
+      )}
+
+      {baseImage && !generated &&(
+        <button onClick={generatePFP} className="generate-button">
+              /generate_emblem
+        </button>
       )}
     </div>
   );
