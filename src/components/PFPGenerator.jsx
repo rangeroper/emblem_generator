@@ -55,56 +55,46 @@ const PFPGenerator = () => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
 
-  /**************************************** 
-  image filters: BW, Halftone, Vignette
-  *****************************************/
+  /*************************** 
+  image filters: BW, Halftone
+  ***************************/
   const enhanceContrastAndConvertToBW = (ctx, width, height) => {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
   
-    const brightnessBoost = 20;
-    const contrastFactor = 2;
-  
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY); // Max distance from center to the edge
+    const factor = 1.30; 
+    const brightnessBoost = 30;
   
     for (let i = 0; i < data.length; i += 4) {
-      const x = (i / 4) % width;  
-      const y = Math.floor(i / 4 / width); 
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
   
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      // adjust brightness 
+      let adjustedR = Math.min(255, r + brightnessBoost);
+      let adjustedG = Math.min(255, g + brightnessBoost);
+      let adjustedB = Math.min(255, b + brightnessBoost);
   
-      const vignetteFactor = Math.min(1, distance / maxDistance);
+      // adjust contrast
+      data[i] = Math.min(255, factor * (adjustedR - 128) + 128);
+      data[i + 1] = Math.min(255, factor * (adjustedG - 128) + 128);
+      data[i + 2] = Math.min(255, factor * (adjustedB - 128) + 128);
+    }
   
-      let r = data[i] + brightnessBoost;
-      let g = data[i + 1] + brightnessBoost;
-      let b = data[i + 2] + brightnessBoost;
-  
-      r = contrastFactor * (r - 128) + 128;
-      g = contrastFactor * (g - 128) + 128;
-      b = contrastFactor * (b - 128) + 128;
-  
-      r = Math.max(0, r - vignetteFactor * 75);
-      g = Math.max(0, g - vignetteFactor * 75); 
-      b = Math.max(0, b - vignetteFactor * 75);
-  
-      const gray = Math.min(255, (r * 0.3 + g * 0.59 + b * 0.11) + 10);
-  
-      data[i] = gray;
-      data[i + 1] = gray;
-      data[i + 2] = gray;
+    // convert to bw
+    for (let i = 0; i < data.length; i += 4) {
+      const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+      data[i] = avg;
+      data[i + 1] = avg;
+      data[i + 2] = avg;
     }
   
     ctx.putImageData(imageData, 0, 0);
   };
   
-
   const createHalftoneEffect = (ctx, width, height) => {
-    const dotSpacing = 3;  
-    const maxDotSize = 2; 
+    const dotSpacing = 6;
+    const maxDotSize = 5;
   
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
@@ -117,17 +107,19 @@ const PFPGenerator = () => {
         const i = (y * width + x) * 4;
         const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
   
-        const dotSize = (1 - brightness / 255) * maxDotSize * 0.8;
+        const dotSize = Math.max(0, Math.pow((1 - brightness / 255), 0.9) * maxDotSize);
   
-        const noise = (Math.random() - 0.5) * 2;
+        const offsetX = (y % (2 * dotSpacing) === 0) ? 0 : dotSpacing / 2;
   
-        ctx.beginPath();
-        ctx.arc(x + noise, y + noise, dotSize, 0, Math.PI * 2, false);
-        ctx.fillStyle = 'black';
-        ctx.fill();
+        if (dotSize > 0.1) { 
+          ctx.beginPath();
+          ctx.arc(x + offsetX, y, dotSize, 0, Math.PI * 2, false);
+          ctx.fillStyle = 'black';
+          ctx.fill();
+        }
       }
     }
-  };  
+  };
 
   /**************************************** 
   Generate PFP Image
@@ -144,9 +136,6 @@ const PFPGenerator = () => {
       canvas.height = 1000; 
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const zoomedWidth = croppedAreaPixels.width * zoom;
-      const zoomedHeight = croppedAreaPixels.height * zoom;
 
       ctx.drawImage(
         img, 
@@ -165,13 +154,13 @@ const PFPGenerator = () => {
 
       const textureImg = new Image();
       textureImg.onload = () => {
-        ctx.globalAlpha = 0.3; 
+        ctx.globalAlpha = 0.2; 
         ctx.drawImage(textureImg, 0, 0, canvas.width * 2, canvas.height * 2);
         ctx.globalAlpha = 1.0; // Reset globalalpha to default
 
         const overlayImg = new Image();
         overlayImg.onload = () => {
-          const overlaySize = canvas.width * 0.6;
+          const overlaySize = canvas.width * 0.9;
           const aspectRatio = overlayImg.width / overlayImg.height;
           const overlayWidth = overlaySize;
           const overlayHeight = overlaySize / aspectRatio;
