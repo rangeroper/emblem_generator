@@ -204,16 +204,37 @@ const PFPGenerator = () => {
   **********/
   return (
     <div className="pfp-container">
-      <div className="upload-area">
+      <div 
+        className="upload-area"
+        style={{
+          backgroundColor: baseImage ? '#e0e0e0' : 'white', 
+          borderColor: baseImage ? '#b0b0b0' : '#ccc', 
+          cursor: baseImage ? 'not-allowed' : 'pointer' 
+        }}
+      >
         <label>
-          <Upload className="upload-icon" size={48} />
-          <div className="upload-text">upload your image</div>
+          <Upload 
+            className="upload-icon" 
+            size={48}
+            style={{
+              cursor: baseImage ? 'not-allowed' : 'pointer'
+            }} 
+          />
+          <div 
+            className="upload-text"
+            style={{
+              cursor: baseImage ? 'not-allowed' : 'pointer' 
+            }}
+          >
+            upload your image
+          </div>
           <input
             ref={fileUpload}
             type="file"
             style={{ display: 'none' }}
             accept="image/*"
             onChange={uploadImage}
+            disabled={baseImage !== null} 
           />
         </label>
       </div>
